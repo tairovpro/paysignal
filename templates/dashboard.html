@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PaySignal · {{ business }}</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #fff; --ink: #1d2433; --muted: #667085; --line: #e4e7ec;
+    --green: #12805c; --green-bg: #e7f6ef; --amber: #b54708; --amber-bg: #fef4e6;
+    --red: #c01048; --red-bg: #fdecf1; --blue: #175cd3; --blue-bg: #eaf1fd; --grey-bg: #f0f2f5;
+    --slack: #1a1d21; --slack-bar: #3f0e40;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+           padding: 16px 28px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand b { font-size: 18px; letter-spacing: -.2px; }
+  .brand span { color: var(--muted); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); }
+  .chip.on::before, .chip.off::before { content: "●"; margin-right: 6px; }
+  .chip.on::before { color: var(--green); } .chip.off::before { color: #98a2b3; }
+  main { max-width: 1280px; margin: 0 auto; padding: 22px 28px 40px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .kpi .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+  .kpi .value { font-size: 24px; font-weight: 650; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .kpi .sub { color: var(--muted); font-size: 12px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .panel h2 { font-size: 13px; margin: 0; padding: 12px 16px; border-bottom: 1px solid var(--line);
+              display: flex; justify-content: space-between; align-items: center; }
+  .panel h2 small { color: var(--muted); font-weight: 400; }
+  .empty { padding: 28px 16px; color: var(--muted); text-align: center; }
+  .empty code { background: var(--grey-bg); padding: 2px 6px; border-radius: 4px; }
+  .event { padding: 12px 16px; border-bottom: 1px solid var(--line); display: grid;
+           grid-template-columns: 92px minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+  .event:last-child { border-bottom: 0; }
+  .badge { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .3px;
+           padding: 3px 8px; border-radius: 6px; text-align: center; }
+  .k-payment { color: var(--green); background: var(--green-bg); }
+  .k-failed { color: var(--amber); background: var(--amber-bg); }
+  .k-refund { color: var(--blue); background: var(--blue-bg); }
+  .k-dispute { color: var(--red); background: var(--red-bg); }
+  .k-ignored { color: var(--muted); background: var(--grey-bg); }
+  .who { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meta { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .amt { font-weight: 650; text-align: right; font-variant-numeric: tabular-nums; }
+  .deliv { display: flex; gap: 6px; justify-content: flex-end; margin-top: 4px; flex-wrap: wrap; }
+  .d { font-size: 11px; padding: 1px 7px; border-radius: 5px; border: 1px solid var(--line); color: var(--muted); }
+  .d.sent { color: var(--green); border-color: #a6e3c9; }
+  .d.failed { color: var(--red); border-color: #f5b8c9; }
+  .d form { display: inline; } .d button { font: inherit; color: var(--red); background: none; border: 0;
+           padding: 0 0 0 4px; cursor: pointer; text-decoration: underline; }
+  .slack { background: var(--slack); color: #d1d2d3; }
+  .slack .bar { background: var(--slack-bar); color: #fff; padding: 10px 16px; font-weight: 700; font-size: 14px;
+                display: flex; justify-content: space-between; }
+  .slack .bar small { font-weight: 400; opacity: .7; }
+  .slack .msgs { max-height: 430px; overflow-y: auto; padding: 8px 0; display: flex; flex-direction: column-reverse; }
+  .msg { display: grid; grid-template-columns: 36px 1fr; gap: 10px; padding: 8px 16px; }
+  .msg:hover { background: #222529; }
+  .avatar { width: 36px; height: 36px; border-radius: 6px; background: #635bff; color: #fff; font-weight: 800;
+            display: grid; place-items: center; font-size: 15px; }
+  .msg .name { color: #fff; font-weight: 700; } .msg .name small { color: #ababad; font-weight: 400; margin-left: 6px; }
+  .msg .app { font-size: 10px; background: #35373b; color: #ababad; padding: 0 4px; border-radius: 3px; margin-left: 4px; }
+  .msg h3 { color: #fff; font-size: 15px; margin: 4px 0 6px; }
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; margin-bottom: 6px; }
+  .msg b { color: #fff; } .msg a { color: #1d9bd1; text-decoration: none; }
+  .msg code { background: #2c2d30; color: #e8912d; padding: 0 4px; border-radius: 3px; font-size: 12px; }
+  .ctx { font-size: 12px; color: #ababad; }
+  .log { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .log div { padding: 6px 16px; border-bottom: 1px solid var(--line); display: grid;
+             grid-template-columns: 70px 84px 1fr; gap: 10px; }
+  .log .o-processed { color: var(--green); } .log .o-duplicate { color: var(--blue); }
+  .log .o-ignored { color: var(--muted); } .log .o-rejected { color: var(--red); font-weight: 700; }
+  .side { display: flex; flex-direction: column; gap: 18px; }
+  .actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  .btn { font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line);
+         background: var(--panel); color: var(--ink); text-decoration: none; cursor: pointer; }
+  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid { grid-template-columns: 1fr; }
+                              main, header { padding-left: 16px; padding-right: 16px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><b>PaySignal</b><span>{{ business }} · Stripe → Slack + Sheets</span></div>
+  <div class="chips">
+    <span class="chip on">Stripe webhook · signature verified</span>
+    <span class="chip {{ 'on' if slack_live else 'off' }}">Slack · {{ 'live' if slack_live else 'preview only' }}</span>
+    <span class="chip {{ 'on' if sheets_live else 'off' }}">Google Sheets · {{ 'live' if sheets_live else 'local ledger' }}</span>
+  </div>
+</header>
+
+<main>
+  <section class="kpis">
+    <div class="kpi"><div class="label">Net collected</div><div class="value">{{ money(net) }}</div>
+      <div class="sub">payments − refunds − chargebacks</div></div>
+    <div class="kpi"><div class="label">Payments</div><div class="value">{{ counts.payment }}</div>
+      <div class="sub">{{ money(totals.payment) }} gross</div></div>
+    <div class="kpi"><div class="label">Needs follow-up</div><div class="value">{{ counts.failed + counts.dispute }}</div>
+      <div class="sub">{{ money(totals.failed + totals.dispute) }} at risk · {{ counts.failed }} failed, {{ counts.dispute }} disputed</div></div>
+    <div class="kpi"><div class="label">Refunded</div><div class="value">{{ money(totals.refund) }}</div>
+      <div class="sub">{{ counts.refund }} refund{{ '' if counts.refund == 1 else 's' }}</div></div>
+  </section>
+
+  <section class="grid">
+    <div>
+      <div class="panel">
+        <h2>Payment events <small>newest first · every row is in the ledger</small></h2>
+        {% if not feed %}
+          <div class="empty">No events yet. Run <code>python simulate.py story</code> or
+            <code>stripe trigger payment_intent.succeeded</code>.</div>
+        {% endif %}
+        {% for e in feed %}
+          {% set r = e.record %}
+          <div class="event">
+            {% if r %}
+              <span class="badge k-{{ r.kind }}">{{ r.kind }}</span>
+              <div>
+                <div class="who">{{ r.customer }}</div>
+                <div class="meta">{{ r.description or r.event_type }} · {{ r.detail }}</div>
+              </div>
+              <div>
+                <div class="amt">{{ '−' if r.kind in ('refund', 'dispute') else '' }}{{ money(r.amount) }}</div>
+                <div class="deliv">
+                  {% for d in e.deliveries %}
+                    <span class="d {{ d.status }}" title="{{ d.detail }} · attempts: {{ d.attempts }}">{{ d.channel }}: {{ d.status }}
+                      {% if d.status == 'failed' %}<form method="post" action="/deliveries/{{ d.id }}/retry"><button>retry</button></form>{% endif %}
+                    </span>
+                  {% endfor %}
+                </div>
+              </div>
+            {% else %}
+              <span class="badge k-ignored">ignored</span>
+              <div><div class="who">{{ e.event_type }}</div><div class="meta">Stored for audit, no action needed</div></div>
+              <div></div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="actions">
+        <a class="btn" href="/ledger.csv">Download ledger (CSV)</a>
+        {% if demo_tools %}<form method="post" action="/demo/reset"><button class="btn">Reset demo data</button></form>{% endif %}
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="panel slack">
+        <div class="bar"># payments <small>{{ 'posted to Slack' if slack_live else 'preview of what Slack receives' }}</small></div>
+        <div class="msgs">
+          {% for e in feed if e.record %}
+            {% for d in e.deliveries if d.channel == 'slack' %}
+              {% set blocks = d.payload.blocks %}
+              <div class="msg">
+                <div class="avatar">S</div>
+                <div>
+                  <div class="name">PaySignal<span class="app">APP</span><small>{{ e.received_at[11:16] }} UTC</small></div>
+                  {% for b in blocks %}
+                    {% if b.type == 'header' %}<h3>{{ d.payload.text.split(' ')[0] | mrkdwn }} {{ b.text.text }}</h3>
+                    {% elif b.type == 'section' and b.fields %}
+                      <div class="fields">{% for f in b.fields %}<div>{{ f.text | mrkdwn }}</div>{% endfor %}</div>
+                    {% elif b.type == 'section' %}<div>{{ b.text.text | mrkdwn }}</div>
+                    {% elif b.type == 'context' %}<div class="ctx">{{ b.elements[0].text | mrkdwn }}</div>
+                    {% endif %}
+                  {% endfor %}
+                </div>
+              </div>
+            {% endfor %}
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Webhook request log <small>what hit /webhooks/stripe</small></h2>
+        <div class="log">
+          {% for l in request_log %}
+            <div><span>{{ l.received_at[11:19] }}</span><span class="o-{{ l.outcome }}">{{ l.outcome }}</span><span>{{ l.detail }}</span></div>
+          {% else %}
+            <div><span></span><span></span><span style="color:var(--muted)">nothing yet</span></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+  // Live refresh: reload when a new webhook or delivery attempt lands.
+  const version = {{ version | tojson }};
+  setInterval(async () => {
+    try {
+      const r = await fetch("/api/version");
+      if ((await r.json()).version !== version) location.reload();
+    } catch (_) {}
+  }, 1500);
+</script>
+</body>
+</html>
